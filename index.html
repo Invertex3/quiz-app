@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quiz App — Dark Theme (No Database)</title>
+  <style>
+    :root{
+      --bg: #000000;
+      --card: #0b1220;
+      --muted: #9aa4b2;
+      --accent: #e6eef8;
+      --accent-2: #2ea6ff;
+      --glass: rgba(255,255,255,0.04);
+      --correct-glow: rgba(34,197,94,0.14);
+      --wrong-glow: rgba(239,68,68,0.14);
+    }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--accent);
+      display:flex;
+      justify-content:center;
+      padding:32px;
+    }
+    .container {
+      width:100%;
+      max-width:920px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:18px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    h1 { margin:0; font-size:20px; }
+    .small { color:var(--muted); font-size:13px; }
+    #username-area { display:flex; gap:8px; }
+    input[type="text"] {
+      padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.04);
+      background:rgba(255,255,255,0.02); color:var(--accent);
+    }
+    .primary {
+      padding:8px 12px; border-radius:8px;
+      background:var(--accent-2); border:none; cursor:pointer; font-weight:700;
+    }
+    .scoreboard {
+      background:rgba(255,255,255,0.05);
+      padding:8px 12px; border-radius:10px; font-weight:700;
+    }
+    .card { padding:18px; background:rgba(255,255,255,0.03); border-radius:10px; }
+    .options { display:grid; gap:10px; grid-template-columns:1fr 1fr; }
+    .opt {
+      padding:12px; border-radius:10px; cursor:pointer;
+      background:rgba(255,255,255,0.05);
+      color: #ffffff;              /* 👈 option text is now white */
+    }
+    .opt.disabled { opacity:.6; pointer-events:none; }
+    @keyframes glowGreen {
+      0%{box-shadow:0 0 0 transparent}
+      50%{box-shadow:0 12px 34px var(--correct-glow)}
+      100%{box-shadow:0 6px 20px var(--correct-glow)}
+    }
+    @keyframes glowRed {
+      0%{box-shadow:0 0 0 transparent}
+      50%{box-shadow:0 12px 34px var(--wrong-glow)}
+      100%{box-shadow:0 6px 20px var(--wrong-glow)}
+    }
+    .correct { animation:glowGreen 1s ease both; border:2px solid #22c55e; }
+    .wrong { animation:glowRed 1s ease both; border:2px solid #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <div>
+        <h1>Quiz App</h1>
+        <div class="small" id="greetingText">Hello — please enter your name.</div>
+      </div>
+
+      <div id="userArea">
+        <div id="username-area">
+          <input id="usernameInput" placeholder="Enter name" />
+          <button class="primary" id="saveNameBtn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="scoreboard">Score: <span id="topScore">0</span></div>
+
+    <main class="card">
+      <h2 id="questionText">Press Start</h2>
+      <div class="options" id="optionsContainer"></div>
+
+      <div class="small">
+        Question <span id="qIndex">0</span> / <span id="qTotal">0</span>
+      </div>
+
+      <div>
+        <div id="countdownDisplay"></div>
+        <button class="primary" id="startBtn">Start</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Store name locally
+    const saveBtn = document.getElementById("saveNameBtn");
+    const input = document.getElementById("usernameInput");
+    const userArea = document.getElementById("userArea");
+    const greeting = document.getElementById("greetingText");
+
+    function loadName() {
+      const name = localStorage.getItem("quiz_name");
+      if (name) {
+        userArea.innerHTML = `<div class="small">Player: <b>${name}</b></div>`;
+        greeting.textContent = `Hello, ${name}! Ready to quiz?`;
+      }
+    }
+
+    saveBtn.onclick = () => {
+      const name = input.value.trim();
+      if (name) {
+        localStorage.setItem("quiz_name", name);
+        loadName();
+      }
+    };
+    loadName();
+
+    const QUESTIONS = [
+      { q: "What does HTML stand for?", a: ["Hyperlinks and Text Markup Language","Hyper Text Markup Language","Home Tool Markup Language","Hyper Text Making Language"], correct: 1 },
+      { q: "Which symbol is used for single-line comments in JavaScript?", a: ["<!-- -->","##","//","**"], correct: 2 },
+      { q: "What is the output of console.log(2 + '2')?", a: ["4","22","'4'","NaN"], correct: 1 },
+      { q: "Which language is known as the 'mother of all languages'?", a: ["Python","C","Java","Assembly"], correct: 1 },
+      { q: "What does CSS stand for?", a: ["Computer Style Sheets","Cascading Style Sheets","Creative Style System","Colorful Style Script"], correct: 1 },
+      { q: "Which HTML tag links a CSS file?", a: ["<script>","<meta>","<css>","<link>"], correct: 3 },
+      { q: "Which keyword declares a constant in JavaScript?", a: ["var","const","static","let"], correct: 1 },
+      { q: "Time complexity of binary search?", a: ["O(log n)","O(n²)","O(n)","O(1)"], correct: 0 },
+      { q: "Which data structure follows FIFO?", a: ["Stack","Queue","Tree","Graph"], correct: 1 },
+      { q: "What does len() do in Python?", a: ["Returns length","Finds error","Converts type","Declares list"], correct: 0 },
+      { q: "Keyword to create a function in JavaScript?", a: ["func","define","function","method"], correct: 2 },
+      { q: "DOM stands for:", a: ["Document Object Model","Data Oriented Method","Digital Object Machine","Dark Output Mode"], correct: 0 },
+      { q: "File extension for JavaScript:", a: [".js",".java",".jsx",".script"], correct: 0 },
+      { q: "Which tag displays images in HTML?", a: ["<pic>","<image>","<img>","<media>"], correct: 2 },
+      { q: "Result of 5 == '5' in JS?", a: ["false","10","true","error"], correct: 2 },
+      { q: "CSS property for text color:", a: ["bgcolor","color","font-color","text-color"], correct: 1 },
+      { q: "Default display of <div>:", a: ["inline","block","flex","none"], correct: 1 },
+      { q: "Operator used for assigning values:", a: ["==",":=","=","==="], correct: 2 },
+      { q: "API stands for:", a: ["Automatic Programmer Interface","Application Program Interface","Applied Program Integration","Advanced Programming Input"], correct: 1 },
+      { q: "JS array method that adds at end:", a: ["push()","add()","pop()","insert()"], correct: 0 },
+      { q: "JSON stands for:", a: ["JavaScript Object Notation","Java Source Object Name","Joined String Ordered Notation","Just Simple Object Notation"], correct: 0 },
+      { q: "Keyword to stop a loop:", a: ["end","break","stop","exit"], correct: 1 },
+      { q: "Result of true && false in JS:", a: ["true","1","false","undefined"], correct: 2 },
+      { q: "Protocol for loading web pages:", a: ["HTTP","FTP","SMTP","SSH"], correct: 0 },
+      { q: "Recursion is:", a: ["Loop inside loop","Function calling itself","Infinite loop","Function without return"], correct: 1 },
+      { q: "Strict equality in JS:", a: ["=","==","===","!=="], correct: 2 },
+      { q: "Convert string to integer in Python:", a: ["str()","int()","parse()","integer()"], correct: 1 },
+      { q: "SQL stands for:", a: ["Simple Query Language","Structured Question Language","Structured Query Language","System Query Logic"], correct: 2 },
+      { q: "Numbered list tag in HTML:", a: ["<ul>","<dl>","<list>","<ol>"], correct: 3 },
+      { q: "margin: 0 auto usually does:", a: ["Adds padding","Centers block elements","Removes spacing","Increases height"], correct: 1 }
+    ];
+
+    let order = [], current = 0, score = 0;
+    const qText = document.getElementById("questionText");
+    const options = document.getElementById("optionsContainer");
+    const qIndex = document.getElementById("qIndex");
+    const qTotal = document.getElementById("qTotal");
+    const countdown = document.getElementById("countdownDisplay");
+    const scoreEl = document.getElementById("topScore");
+    const startBtn = document.getElementById("startBtn");
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+      }
+    }
+
+    function startQuiz(){
+      order = QUESTIONS.map((_,i)=>i);
+      shuffle(order);
+      score = 0;
+      current = 0;
+      qTotal.textContent = order.length;
+      showQ();
+    }
+
+    function showQ(){
+      countdown.textContent="";
+      const q = QUESTIONS[order[current]];
+      qText.textContent = q.q;
+      qIndex.textContent = current+1;
+
+      options.innerHTML = "";
+      q.a.forEach((text,i)=>{
+        const btn = document.createElement("button");
+        btn.className="opt";
+        btn.textContent=text;
+        btn.onclick=()=>select(btn, i, q.correct);
+        options.appendChild(btn);
+      });
+    }
+
+    let timer;
+    function select(btn, chosen, correct){
+      [...options.children].forEach(b=>b.classList.add("disabled"));
+      let t = 5;
+      countdown.textContent=`Revealing in ${t}s...`;
+      timer = setInterval(()=>{
+        t--; countdown.textContent=`Revealing in ${t}s...`;
+        if(t<=0){ clearInterval(timer); reveal(chosen, correct); }
+      },1000);
+    }
+
+    function reveal(chosen, correct){
+      const buttons = [...options.children];
+      if(chosen===correct){score++;}
+      scoreEl.textContent = score;
+      buttons.forEach((b,i)=>{
+        if(i===correct) b.classList.add("correct");
+        if(i===chosen && chosen!==correct) b.classList.add("wrong");
+      });
+      setTimeout(()=>{
+        current++;
+        if(current>=order.length){
+          qText.textContent=`Done! Score: ${score}/${order.length}`;
+          options.innerHTML="";
+          countdown.textContent="";
+        } else showQ();
+      },1200);
+    }
+
+    startBtn.onclick=startQuiz;
+  </script>
+</body>
+</html>
